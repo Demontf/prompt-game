@@ -121,6 +121,25 @@ class Enemy(pygame.sprite.Sprite):
         if self.rect.top > SCREEN_HEIGHT:
             self.kill()
 
+class Explosion(pygame.sprite.Sprite):
+    def __init__(self, center, is_player=False):
+        super().__init__()
+        self.is_player = is_player
+        self.image = load_image("effer2.png" if is_player else "effer.png")
+        self.rect = self.image.get_rect()
+        self.rect.center = center
+        self.frame = 0
+        self.last_update = pygame.time.get_ticks()
+        self.frame_rate = 50  # how long to wait for the next frame
+
+    def update(self):
+        now = pygame.time.get_ticks()
+        if now - self.last_update > self.frame_rate:
+            self.last_update = now
+            self.frame += 1
+            if self.frame > 3:  # After 4 frames, remove the explosion
+                self.kill()
+
 class EnemyBullet(pygame.sprite.Sprite):
     def __init__(self, x, y, target_x, target_y):
         super().__init__()
@@ -189,6 +208,7 @@ class Game:
         self.player_bullets = pygame.sprite.Group()
         self.enemies = pygame.sprite.Group()
         self.enemy_bullets = pygame.sprite.Group()
+        self.explosions = pygame.sprite.Group()
         
         # Create player
         self.player = Player()
@@ -217,14 +237,20 @@ class Game:
     def handle_collisions(self):
         # Player bullets hitting enemies
         hits = pygame.sprite.groupcollide(self.enemies, self.player_bullets, True, True)
-        for hit in hits:
+        for enemy in hits:
             self.score += 100
             self.explosion_sound.play()
+            explosion = Explosion(enemy.rect.center)
+            self.all_sprites.add(explosion)
+            self.explosions.add(explosion)
             
         # Enemy bullets hitting player
         hits = pygame.sprite.groupcollide(self.players, self.enemy_bullets, True, True)
-        if hits:
+        for player in hits:
             self.explosion_sound.play()
+            explosion = Explosion(player.rect.center, True)
+            self.all_sprites.add(explosion)
+            self.explosions.add(explosion)
             self.lives -= 1
             if self.lives > 0:
                 self.player = Player()
@@ -235,8 +261,17 @@ class Game:
                 
         # Enemies colliding with player
         hits = pygame.sprite.groupcollide(self.players, self.enemies, True, True)
-        if hits:
+        for player, enemies in hits.items():
             self.explosion_sound.play()
+            # Player explosion
+            explosion = Explosion(player.rect.center, True)
+            self.all_sprites.add(explosion)
+            self.explosions.add(explosion)
+            # Enemy explosions
+            for enemy in enemies:
+                explosion = Explosion(enemy.rect.center)
+                self.all_sprites.add(explosion)
+                self.explosions.add(explosion)
             self.lives -= 1
             if self.lives > 0:
                 self.player = Player()
