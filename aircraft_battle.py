@@ -18,9 +18,31 @@ WHITE = (255, 255, 255)
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Aircraft Battle")
 
+# Check required files
+def check_required_files():
+    required_files = [
+        "bg.png", "hero1.png", "enemy01.png", "enemy02.png", "enemy03.png",
+        "b2.png", "b3.png", "effer.png", "effer2.png", "gameover.png",
+        "baozha.ogg"
+    ]
+    missing_files = []
+    for file in required_files:
+        if not os.path.exists(os.path.join("assets", file)):
+            missing_files.append(file)
+    if missing_files:
+        print("Error: Missing required files in assets directory:")
+        for file in missing_files:
+            print(f"  - {file}")
+        return False
+    return True
+
 # Load images
 def load_image(name):
-    return pygame.image.load(os.path.join("assets", name)).convert_alpha()
+    try:
+        return pygame.image.load(os.path.join("assets", name)).convert_alpha()
+    except pygame.error as e:
+        print(f"Error loading image {name}: {e}")
+        raise
 
 # Game states
 MENU = 0
@@ -36,7 +58,7 @@ class Player(pygame.sprite.Sprite):
         self.rect.centerx = SCREEN_WIDTH // 2
         self.rect.bottom = SCREEN_HEIGHT - 10
         self.last_shot = 0
-        self.shoot_delay = 2000  # 2 seconds in milliseconds
+        self.shoot_delay = 300  # 0.3 seconds in milliseconds
 
     def update(self):
         pos = pygame.mouse.get_pos()
@@ -140,7 +162,12 @@ class Game:
         self.background = pygame.transform.scale(self.background, (SCREEN_WIDTH, SCREEN_HEIGHT))
         
         # Load explosion sound
-        self.explosion_sound = pygame.mixer.Sound(os.path.join("assets", "baozha.ogg"))
+        try:
+            self.explosion_sound = pygame.mixer.Sound(os.path.join("assets", "baozha.ogg"))
+            self.explosion_sound.set_volume(0.5)  # Set volume to 50%
+        except pygame.error as e:
+            print(f"Error loading sound baozha.ogg: {e}")
+            raise
         
         # Load game over image
         self.game_over_img = load_image("gameover.png")
@@ -310,5 +337,15 @@ class Game:
         pygame.quit()
 
 if __name__ == "__main__":
+    # Check for required files before starting
+    if not check_required_files():
+        print("Game cannot start due to missing files.")
+        pygame.quit()
+        exit(1)
+    
+    # Set up sound
+    pygame.mixer.init()
+    pygame.mixer.set_num_channels(8)  # Allow more simultaneous sounds
+    
     game = Game()
     game.run()
